@@ -228,11 +228,11 @@ if labor_file and estimate_file:
             total_quote += quoted
             total_actual += actual
 
-        results.append({
-            "Labor Type": labor,
-            "Quoted Hours": round(quoted, 2),
-            "Actual Hours": round(actual, 2),
-            "Remaining Hours": round(remaining, 2)
+            results.append({
+                "Labor Type": labor,
+                "Quoted Hours": round(quoted, 2),
+                "Actual Hours": round(actual, 2),
+                "Remaining Hours": round(remaining, 2)
     })
         results_df = pd.DataFrame(results)
 
