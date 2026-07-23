@@ -233,7 +233,7 @@ if labor_file and estimate_file:
                 "Quoted Hours": round(quoted, 2),
                 "Actual Hours": round(actual, 2),
                 "Remaining Hours": round(remaining, 2)
-    })
+            })
         results_df = pd.DataFrame(results)
 
         # Summary cards
@@ -289,79 +289,79 @@ if labor_file and estimate_file:
                 hide_index=True,
                 use_container_width=True
             )
-st.divider()
+        st.divider()
 
-st.subheader("📄 Export Report")
+        st.subheader("📄 Export Report")
 
-pdf_buffer = BytesIO()
+        pdf_buffer = BytesIO()
 
-doc = SimpleDocTemplate(pdf_buffer, pagesize=letter)
-styles = getSampleStyleSheet()
+        doc = SimpleDocTemplate(pdf_buffer, pagesize=letter)
+        styles = getSampleStyleSheet()
 
-elements = []
+        elements = []
 
-# Title
-elements.append(Paragraph("Clearway Labor Analysis Report", styles["Title"]))
+        # Title
+        elements.append(Paragraph("Clearway Labor Analysis Report", styles["Title"]))
 
-# Summary
-elements.append(Paragraph("<br/>", styles["Normal"]))
-elements.append(
-    Paragraph(
-        f"""
-        <b>Quoted Hours:</b> {total_quote:.2f}<br/>
-        <b>Actual Hours:</b> {total_actual:.2f}<br/>
-        <b>Remaining Hours:</b> {total_quote-total_actual:.2f}
-        """,
-        styles["BodyText"],
-    )
-)
+        # Summary
+        elements.append(Paragraph("<br/>", styles["Normal"]))
+        elements.append(
+            Paragraph(
+                f"""
+                <b>Quoted Hours:</b> {total_quote:.2f}<br/>
+                <b>Actual Hours:</b> {total_actual:.2f}<br/>
+                <b>Remaining Hours:</b> {total_quote-total_actual:.2f}
+                """,
+                styles["BodyText"],
+            )
+        )
 
-elements.append(Paragraph("<br/>", styles["Normal"]))
+        elements.append(Paragraph("<br/>", styles["Normal"]))
 
-# Main Results Table
-table_data = [results_df.columns.tolist()] + results_df.values.tolist()
+        # Main Results Table
+        table_data = [results_df.columns.tolist()] + results_df.values.tolist()
 
-table = Table(table_data)
+        table = Table(table_data)
 
-table.setStyle(TableStyle([
-    ("BACKGROUND", (0,0), (-1,0), colors.grey),
-    ("TEXTCOLOR", (0,0), (-1,0), colors.whitesmoke),
-    ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
-    ("GRID", (0,0), (-1,-1), 1, colors.black),
-    ("BACKGROUND", (0,1), (-1,-1), colors.beige),
-]))
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), colors.grey),
+            ("TEXTCOLOR", (0,0), (-1,0), colors.whitesmoke),
+            ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+            ("GRID", (0,0), (-1,-1), 1, colors.black),
+            ("BACKGROUND", (0,1), (-1,-1), colors.beige),
+        ]))
 
-elements.append(table)
+        elements.append(table)
 
-# Unmapped Services
-if len(unmapped) > 0:
+        # Unmapped Services
+        if len(unmapped) > 0:
 
-    elements.append(Paragraph("<br/><br/>", styles["Normal"]))
-    elements.append(Paragraph("Unmapped Services", styles["Heading2"]))
+            elements.append(Paragraph("<br/><br/>", styles["Normal"]))
+            elements.append(Paragraph("Unmapped Services", styles["Heading2"]))
 
-    unmapped_table = [["Service", "Occurrences"]]
+            unmapped_table = [["Service", "Occurrences"]]
 
-    for _, row in unmapped.iterrows():
-        unmapped_table.append([row["Service"], str(row["Occurrences"])])
+            for _, row in unmapped.iterrows():
+                unmapped_table.append([row["Service"], str(row["Occurrences"])])
 
-    table2 = Table(unmapped_table)
+            table2 = Table(unmapped_table)
 
-    table2.setStyle(TableStyle([
-        ("BACKGROUND", (0,0), (-1,0), colors.grey),
-        ("TEXTCOLOR", (0,0), (-1,0), colors.whitesmoke),
-        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
-        ("GRID", (0,0), (-1,-1), 1, colors.black),
-        ("BACKGROUND", (0,1), (-1,-1), colors.beige),
-    ]))
+            table2.setStyle(TableStyle([
+                ("BACKGROUND", (0,0), (-1,0), colors.grey),
+                ("TEXTCOLOR", (0,0), (-1,0), colors.whitesmoke),
+                ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+                ("GRID", (0,0), (-1,-1), 1, colors.black),
+                ("BACKGROUND", (0,1), (-1,-1), colors.beige),
+            ]))
 
-    elements.append(table2)
+            elements.append(table2)
 
-doc.build(elements)
+        doc.build(elements)
 
-st.download_button(
-    label="📥 Download PDF Report",
-    data=pdf_buffer.getvalue(),
-    file_name="Clearway_Labor_Report.pdf",
-    mime="application/pdf",
-    use_container_width=True
-)
+        st.download_button(
+            label="📥 Download PDF Report",
+            data=pdf_buffer.getvalue(),
+            file_name="Clearway_Labor_Report.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
