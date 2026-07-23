@@ -45,6 +45,111 @@ service_map = {
     "T.FI-Installation": "Installation"
 }
 
+# -----------------------------
+# Map QuickBooks services
+# -----------------------------
+def map_service(service):
+
+    service = str(service).strip()
+
+    # Keep original mappings first
+    if service in service_map:
+        return service_map[service]
+
+    # BUILD
+    if service.startswith("T.B.Electrical Assembly"):
+        return "Assembly - Electrical"
+
+    if service.startswith("T.B.Mechanical Assembly"):
+        return "Assembly - Mechanical"
+
+    if service.startswith("T.B.Machine Shop"):
+        return "Assembly - Mechanical"
+
+    if service.startswith("T.B.Programming"):
+        return "Programming"
+
+    if service.startswith("T.B.Procurement"):
+        return "Admin"
+
+    if service.startswith("T.B.Testing"):
+        return "Engineering"
+
+    if service.startswith("T.B.Other"):
+        return "Assembly - Mechanical"
+
+    # ENGINEERING
+    if service.startswith("T.E.Electrical Design"):
+        return "Engineering"
+
+    if service.startswith("T.E.Mechanical Design"):
+        return "Engineering"
+
+    if service.startswith("T.E.Research/Testing"):
+        return "Engineering"
+
+    if service.startswith("T.E.Other"):
+        return "Engineering"
+
+    if service.startswith("T.E.Programming"):
+        return "Programming"
+
+    # FACTORY ACCEPTANCE TEST
+    if service.startswith("T.F."):
+        return "Engineering"
+
+    # INSTALLATION
+    if service.startswith("T.I."):
+        return "Installation"
+
+    # MISC
+    if service.startswith("T.M.Office"):
+        return "Admin"
+
+    if service.startswith("T.M.Project"):
+        return "Admin"
+
+    if service.startswith("T.M.Procurement"):
+        return "Admin"
+
+    if service.startswith("T.M.Part Pick Up"):
+        return "Admin"
+
+    if service.startswith("T.M.Travel"):
+        return "Admin"
+
+    if service.startswith("T.M.Training"):
+        return "Admin"
+
+    if service.startswith("T.M.Sales"):
+        return "Admin"
+
+    if service.startswith("T.M.R&D"):
+        return "Engineering"
+
+    if service.startswith("T.M.Summer Friday"):
+        return "Admin"
+
+    # NON-PROJECT
+    if service.startswith("T.N."):
+        return "Non-Project"
+
+    # PRE-SALE
+    if service.startswith("T.P."):
+        return "Pre-Sale"
+
+    # SERVICE
+    if service.startswith("T.S.Engineering/Programming"):
+        return "Programming"
+
+    if service.startswith("T.S.Service Call"):
+        return "Installation"
+
+    if service.startswith("T.S.Other"):
+        return "Installation"
+
+    return "Other"
+
 st.title("📊 Clearway Labor Analyzer")
 st.write(
     "Upload a QuickBooks labor report and an estimate report to compare quoted vs. actual labor hours."
@@ -76,11 +181,7 @@ if labor_file and estimate_file:
 
         labor_df["Hours"] = labor_df["Duration"].apply(duration_to_hours)
 
-        labor_df["Labor Type"] = (
-            labor_df["Service"]
-            .map(service_map)
-            .fillna("Other")
-        )
+        labor_df["Labor Type"] = labor_df["Service"].apply(map_service)
 
         actual_hours = labor_df.groupby("Labor Type")["Hours"].sum()
 
