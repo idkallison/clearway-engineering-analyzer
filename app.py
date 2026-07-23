@@ -11,11 +11,6 @@ st.set_page_config(
     page_icon="📊",
     layout="wide"
 )
-st.set_page_config(
-    page_title="Clearway Labor Analyzer",
-    page_icon="📊",
-    layout="wide"
-)
 
 # -----------------------------
 # Convert HH:MM to decimal hours
@@ -55,6 +50,111 @@ service_map = {
     "T.FI-Installation": "Installation"
 }
 
+# -----------------------------
+# Map QuickBooks services
+# -----------------------------
+def map_service(service):
+
+    service = str(service).strip()
+
+    # Keep original mappings first
+    if service in service_map:
+        return service_map[service]
+
+    # BUILD
+    if service.startswith("T.B.Electrical Assembly"):
+        return "Assembly - Electrical"
+
+    if service.startswith("T.B.Mechanical Assembly"):
+        return "Assembly - Mechanical"
+
+    if service.startswith("T.B.Machine Shop"):
+        return "Assembly - Mechanical"
+
+    if service.startswith("T.B.Programming"):
+        return "Programming"
+
+    if service.startswith("T.B.Procurement"):
+        return "Admin"
+
+    if service.startswith("T.B.Testing"):
+        return "Engineering"
+
+    if service.startswith("T.B.Other"):
+        return "Assembly - Mechanical"
+
+    # ENGINEERING
+    if service.startswith("T.E.Electrical Design"):
+        return "Engineering"
+
+    if service.startswith("T.E.Mechanical Design"):
+        return "Engineering"
+
+    if service.startswith("T.E.Research/Testing"):
+        return "Engineering"
+
+    if service.startswith("T.E.Other"):
+        return "Engineering"
+
+    if service.startswith("T.E.Programming"):
+        return "Programming"
+
+    # FACTORY ACCEPTANCE TEST
+    if service.startswith("T.F."):
+        return "Engineering"
+
+    # INSTALLATION
+    if service.startswith("T.I."):
+        return "Installation"
+
+    # MISC
+    if service.startswith("T.M.Office"):
+        return "Admin"
+
+    if service.startswith("T.M.Project"):
+        return "Admin"
+
+    if service.startswith("T.M.Procurement"):
+        return "Admin"
+
+    if service.startswith("T.M.Part Pick Up"):
+        return "Admin"
+
+    if service.startswith("T.M.Travel"):
+        return "Admin"
+
+    if service.startswith("T.M.Training"):
+        return "Admin"
+
+    if service.startswith("T.M.Sales"):
+        return "Admin"
+
+    if service.startswith("T.M.R&D"):
+        return "Engineering"
+
+    if service.startswith("T.M.Summer Friday"):
+        return "Admin"
+
+    # NON-PROJECT
+    if service.startswith("T.N."):
+        return "Non-Project"
+
+    # PRE-SALE
+    if service.startswith("T.P."):
+        return "Pre-Sale"
+
+    # SERVICE
+    if service.startswith("T.S.Engineering/Programming"):
+        return "Programming"
+
+    if service.startswith("T.S.Service Call"):
+        return "Installation"
+
+    if service.startswith("T.S.Other"):
+        return "Installation"
+
+    return "Other"
+
 st.title("📊 Clearway Labor Analyzer")
 st.write(
     "Upload a QuickBooks labor report and an estimate report to compare quoted vs. actual labor hours."
@@ -86,11 +186,7 @@ if labor_file and estimate_file:
 
         labor_df["Hours"] = labor_df["Duration"].apply(duration_to_hours)
 
-        labor_df["Labor Type"] = (
-            labor_df["Service"]
-            .map(service_map)
-            .fillna("Other")
-        )
+        labor_df["Labor Type"] = labor_df["Service"].apply(map_service)
 
         actual_hours = labor_df.groupby("Labor Type")["Hours"].sum()
 
@@ -127,7 +223,7 @@ if labor_file and estimate_file:
 
             quoted = float(estimated_hours.get(labor, 0))
             actual = float(actual_hours.get(labor, 0))
-            diff = actual - quoted
+            remaining = quoted - actual
 
             total_quote += quoted
             total_actual += actual
@@ -136,9 +232,8 @@ if labor_file and estimate_file:
                 "Labor Type": labor,
                 "Quoted Hours": round(quoted, 2),
                 "Actual Hours": round(actual, 2),
-                "Difference": round(diff, 2)
-            })
-
+                "Remaining Hours": round(remaining, 2)
+    })
         results_df = pd.DataFrame(results)
 
         # Summary cards
@@ -150,8 +245,8 @@ if labor_file and estimate_file:
         c1.metric("Quoted Hours", f"{total_quote:.2f}")
         c2.metric("Actual Hours", f"{total_actual:.2f}")
         c3.metric(
-            "Difference",
-            f"{(total_actual-total_quote):.2f}"
+            "Remaining Hours",
+            f"{(total_quote-total_actual):.2f}"
         )
 
         st.divider()
@@ -194,3 +289,79 @@ if labor_file and estimate_file:
                 hide_index=True,
                 use_container_width=True
             )
+st.divider()
+
+st.subheader("📄 Export Report")
+
+pdf_buffer = BytesIO()
+
+doc = SimpleDocTemplate(pdf_buffer, pagesize=letter)
+styles = getSampleStyleSheet()
+
+elements = []
+
+# Title
+elements.append(Paragraph("Clearway Labor Analysis Report", styles["Title"]))
+
+# Summary
+elements.append(Paragraph("<br/>", styles["Normal"]))
+elements.append(
+    Paragraph(
+        f"""
+        <b>Quoted Hours:</b> {total_quote:.2f}<br/>
+        <b>Actual Hours:</b> {total_actual:.2f}<br/>
+        <b>Remaining Hours:</b> {total_quote-total_actual:.2f}
+        """,
+        styles["BodyText"],
+    )
+)
+
+elements.append(Paragraph("<br/>", styles["Normal"]))
+
+# Main Results Table
+table_data = [results_df.columns.tolist()] + results_df.values.tolist()
+
+table = Table(table_data)
+
+table.setStyle(TableStyle([
+    ("BACKGROUND", (0,0), (-1,0), colors.grey),
+    ("TEXTCOLOR", (0,0), (-1,0), colors.whitesmoke),
+    ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+    ("GRID", (0,0), (-1,-1), 1, colors.black),
+    ("BACKGROUND", (0,1), (-1,-1), colors.beige),
+]))
+
+elements.append(table)
+
+# Unmapped Services
+if len(unmapped) > 0:
+
+    elements.append(Paragraph("<br/><br/>", styles["Normal"]))
+    elements.append(Paragraph("Unmapped Services", styles["Heading2"]))
+
+    unmapped_table = [["Service", "Occurrences"]]
+
+    for _, row in unmapped.iterrows():
+        unmapped_table.append([row["Service"], str(row["Occurrences"])])
+
+    table2 = Table(unmapped_table)
+
+    table2.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), colors.grey),
+        ("TEXTCOLOR", (0,0), (-1,0), colors.whitesmoke),
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("GRID", (0,0), (-1,-1), 1, colors.black),
+        ("BACKGROUND", (0,1), (-1,-1), colors.beige),
+    ]))
+
+    elements.append(table2)
+
+doc.build(elements)
+
+st.download_button(
+    label="📥 Download PDF Report",
+    data=pdf_buffer.getvalue(),
+    file_name="Clearway_Labor_Report.pdf",
+    mime="application/pdf",
+    use_container_width=True
+)
