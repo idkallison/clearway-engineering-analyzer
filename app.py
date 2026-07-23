@@ -1,3 +1,16 @@
+import streamlit as st
+import pandas as pd
+from io import BytesIO
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle
+
+st.set_page_config(
+    page_title="Clearway Labor Analyzer",
+    page_icon="📊",
+    layout="wide"
+)
 st.set_page_config(
     page_title="Clearway Labor Analyzer",
     page_icon="📊",
