@@ -218,18 +218,17 @@ if labor_file and estimate_file:
 
             quoted = float(estimated_hours.get(labor, 0))
             actual = float(actual_hours.get(labor, 0))
-            diff = actual - quoted
+            remaining = quoted - actual
 
             total_quote += quoted
             total_actual += actual
 
-            results.append({
-                "Labor Type": labor,
-                "Quoted Hours": round(quoted, 2),
-                "Actual Hours": round(actual, 2),
-                "Difference": round(diff, 2)
-            })
-
+        results.append({
+            "Labor Type": labor,
+            "Quoted Hours": round(quoted, 2),
+            "Actual Hours": round(actual, 2),
+            "Remaining Hours": round(remaining, 2)
+    })
         results_df = pd.DataFrame(results)
 
         # Summary cards
@@ -241,8 +240,8 @@ if labor_file and estimate_file:
         c1.metric("Quoted Hours", f"{total_quote:.2f}")
         c2.metric("Actual Hours", f"{total_actual:.2f}")
         c3.metric(
-            "Difference",
-            f"{(total_actual-total_quote):.2f}"
+            "Remaining Hours",
+            f"{(total_quote-total_actual):.2f}"
         )
 
         st.divider()
