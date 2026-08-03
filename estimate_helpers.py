@@ -35,14 +35,23 @@ def infer_estimate_labor_type(
     original_labor_type="",
     section="",
     notes="",
+    task_map=None,
 ):
     """
     Use the task first because several Estimate sheets have incorrect
     or overly broad values in the Labor Type column.
+
+    If task_map is provided (from an uploaded master task map CSV),
+    an exact match there takes priority over everything below.
     """
     task_text = str(task).strip().lower()
     section_text = str(section).strip().lower()
     notes_text = str(notes).strip().lower()
+
+    if task_map:
+        mapped = task_map.get(task_text)
+        if mapped:
+            return mapped
 
     combined = " ".join(
         [
@@ -196,7 +205,7 @@ def find_section_column(estimate_df):
     return None
 
 
-def prepare_estimate_dataframe(estimate_df):
+def prepare_estimate_dataframe(estimate_df, task_map=None):
     """
     Supports both normal Estimate CSV templates:
 
@@ -205,6 +214,9 @@ def prepare_estimate_dataframe(estimate_df):
 
     New:
       [Section column], Task, Level of experience, Required Hrs, ...
+
+    task_map, if provided, is an optional dict from an uploaded master
+    task map CSV that overrides the built-in matching rules.
     """
     if "Required Hrs" not in estimate_df.columns:
         raise ValueError(
@@ -270,10 +282,10 @@ def prepare_estimate_dataframe(estimate_df):
                 ],
                 section=row["Section"],
                 notes=row["Notes"],
+                task_map=task_map,
             ),
             axis=1,
         )
     )
 
     return estimate_rows
-
