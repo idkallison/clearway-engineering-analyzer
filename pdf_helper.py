@@ -1,8 +1,9 @@
 from io import BytesIO
+
 from reportlab.lib import colors
-from reportlab.lib.units import inch
 from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import inch
 from reportlab.platypus import (
     Paragraph,
     SimpleDocTemplate,
@@ -22,6 +23,7 @@ def make_pdf(
     total_actual,
     unmapped_services,
     review_rows,
+    project_name=None,
 ):
     buffer = BytesIO()
 
@@ -37,9 +39,14 @@ def make_pdf(
     styles = getSampleStyleSheet()
     elements = []
 
+    title_text = "Clearway Labor Analysis Report"
+
+    if project_name:
+        title_text += f" \u2014 {project_name}"
+
     elements.append(
         Paragraph(
-            "Clearway Labor Analysis Report",
+            title_text,
             styles["Title"],
         )
     )
@@ -254,4 +261,5 @@ def make_pdf(
     buffer.seek(0)
 
     return buffer.getvalue()
+
 
