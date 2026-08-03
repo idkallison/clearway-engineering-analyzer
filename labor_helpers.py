@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 # =========================================================
 # Labor helpers
 # =========================================================
@@ -56,13 +57,21 @@ def clean_service_name(service):
     )
 
 
-def map_service(service):
+def map_service(service, task_map=None):
     """
     Normalize actual QuickBooks services to the broad labor categories
     used by this version of the report.
+
+    If task_map is provided (from an uploaded master task map CSV),
+    an exact match there takes priority over the built-in rules below.
     """
     text = clean_service_name(service)
     lower = text.lower()
+
+    if task_map:
+        mapped = task_map.get(lower)
+        if mapped:
+            return mapped
 
     # New T.B hierarchy
     if lower.startswith("t.b.electrical assembly"):
@@ -144,4 +153,3 @@ def map_service(service):
         return legacy_exact[lower]
 
     return "Other"
-
