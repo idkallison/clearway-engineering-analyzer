@@ -110,17 +110,17 @@ if labor_file and estimate_file:
                 labor_df[
                     "Product/Service full name"
                 ]
-                .apply(clean_service_name)
+                .apply(lab_h.clean_service_name)
             )
 
             labor_df["Hours"] = (
                 labor_df["Duration"]
-                .apply(duration_to_hours)
+                .apply(lab_h.duration_to_hours)
             )
 
             labor_df["Labor Type"] = (
                 labor_df["Service"]
-                .apply(map_service)
+                .apply(lab_h.map_service)
             )
 
             actual_hours = (
