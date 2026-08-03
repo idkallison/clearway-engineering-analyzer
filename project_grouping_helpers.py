@@ -16,7 +16,7 @@ from pathlib import Path
 _NOISE_WORDS = {
     "labor", "labour", "estimate", "estimates", "quote", "quoted",
     "hours", "hrs", "export", "exported", "csv", "utf8", "utf",
-    "report", "final", "data", "sheet", "list", "clearway",
+    "report", "final", "data", "sheet", "list", "clearway", "xlsx",
 }
 
 _DATE_PATTERN = re.compile(r"\b\d{1,2}[-_/]\d{1,2}[-_/]\d{2,4}\b")
@@ -44,38 +44,64 @@ def clean_project_key(filename):
     return cleaned if cleaned else Path(filename).stem.strip()
 
 
-def group_files_into_projects(filenames, similarity_threshold=0.55):
+def group_files_into_projects(filenames, fuzzy_threshold=0.85):
     """
-    Groups filenames into projects using fuzzy matching on their
-    cleaned keys. Returns a dict of {suggested_project_name: [filenames]}.
+    Groups filenames into projects.
+
+    Pass 1: exact match on the cleaned key. This is the reliable case
+    -- e.g. "Project 5571 - Labor.csv" and "Project 5571 - Estimate.csv"
+    clean down to the identical key "project 5571", so they group
+    correctly even though many *different* projects in the same batch
+    also share lots of common words (like "engineering", "inspection",
+    "conveyor").
+
+    Pass 2: any key that's still a singleton after pass 1 (e.g. a typo
+    or slightly different naming) gets a chance to fuzzy-merge into an
+    existing group, but only at a strict similarity threshold -- loose
+    fuzzy matching is what caused unrelated projects to merge before,
+    since sharing a handful of common words was enough to look similar.
     """
-    clusters = []
+    exact_groups = {}
 
     for filename in filenames:
         key = clean_project_key(filename)
+        exact_groups.setdefault(key, []).append(filename)
 
-        best_cluster = None
+    settled = {
+        key: files
+        for key, files in exact_groups.items()
+        if len(files) > 1
+    }
+
+    leftovers = {
+        key: files
+        for key, files in exact_groups.items()
+        if len(files) == 1
+    }
+
+    for key, files in list(leftovers.items()):
+        best_key = None
         best_score = 0.0
 
-        for cluster in clusters:
+        for candidate_key in settled:
             score = difflib.SequenceMatcher(
-                None, key, cluster["key"]
+                None, key, candidate_key
             ).ratio()
 
             if score > best_score:
                 best_score = score
-                best_cluster = cluster
+                best_key = candidate_key
 
-        if best_cluster is not None and best_score >= similarity_threshold:
-            best_cluster["files"].append(filename)
+        if best_key is not None and best_score >= fuzzy_threshold:
+            settled[best_key].extend(files)
         else:
-            clusters.append({"key": key, "files": [filename]})
+            settled[key] = files
 
     result = {}
     used_names = set()
 
-    for cluster in clusters:
-        label = cluster["key"] or "Project"
+    for key, files in settled.items():
+        label = key or "Project"
         final_label = label
         suffix = 2
 
@@ -84,6 +110,6 @@ def group_files_into_projects(filenames, similarity_threshold=0.55):
             suffix += 1
 
         used_names.add(final_label)
-        result[final_label] = cluster["files"]
+        result[final_label] = files
 
     return result
