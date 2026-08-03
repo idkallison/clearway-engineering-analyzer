@@ -1,4 +1,6 @@
 from io import BytesIO
+from reportlab.lib import colors
+from reportlab.lib.units import inch
 from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import (
