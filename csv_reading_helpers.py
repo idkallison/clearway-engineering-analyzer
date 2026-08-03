@@ -1,12 +1,26 @@
-
-
 from io import BytesIO
+
 import pandas as pd
 
 
 # =========================================================
 # CSV reading helpers
 # =========================================================
+
+# The header sets that identify each file type. Used both by the
+# original single-file flow and by auto-detection when files are
+# dropped in bulk.
+LABOR_REQUIRED_COLUMNS = {
+    "Activity date",
+    "Product/Service full name",
+    "Duration",
+}
+
+ESTIMATE_REQUIRED_COLUMNS = {
+    "Task",
+    "Required Hrs",
+}
+
 
 def uploaded_file_bytes(uploaded_file):
     uploaded_file.seek(0)
@@ -103,4 +117,35 @@ def read_csv_with_detected_header(
 #################
 
 
+def detect_uploaded_file_type(uploaded_file):
+    """
+    Figure out whether an uploaded CSV is a Labor CSV or an Estimate
+    CSV by checking whether each format's required header columns can
+    be found in it. Used when files are dropped in bulk without the
+    user labeling them.
 
+    Returns (file_type, dataframe, header_row) where file_type is
+    "labor", "estimate", or None if neither format's headers were
+    found.
+    """
+    try:
+        dataframe, header_row = read_csv_with_detected_header(
+            uploaded_file,
+            LABOR_REQUIRED_COLUMNS,
+        )
+        return "labor", dataframe, header_row
+    except Exception:
+        pass
+
+    try:
+        dataframe, header_row = read_csv_with_detected_header(
+            uploaded_file,
+            ESTIMATE_REQUIRED_COLUMNS,
+        )
+        return "estimate", dataframe, header_row
+    except Exception:
+        pass
+
+    return None, None, None
+
+#################
