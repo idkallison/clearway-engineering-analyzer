@@ -4,9 +4,17 @@ import pandas as pd
 # =========================================================
 # Estimate helpers
 # =========================================================
+#
+# Cleaning and classifying rows from the Estimate CSV (quoted hours).
+# Two Estimate templates exist in the wild (old and new -- see
+# prepare_estimate_dataframe below) so most of this file is about
+# normalizing both shapes into one consistent set of columns.
+
+
 def normalize_original_labor_type(value):
     """
     Normalize labor-type names found in older Estimate CSV files.
+    Returns None if the value doesn't match a known alias.
     """
     text = str(value).strip().lower()
 
@@ -42,7 +50,9 @@ def infer_estimate_labor_type(
     or overly broad values in the Labor Type column.
 
     If task_map is provided (from an uploaded master task map CSV),
-    an exact match there takes priority over everything below.
+    an exact match there takes priority over everything below -- this
+    is also how a custom category (not one of the 9 built-ins) can
+    end up as a Labor Type here.
     """
     task_text = str(task).strip().lower()
     section_text = str(section).strip().lower()
@@ -154,6 +164,8 @@ def infer_estimate_labor_type(
     ):
         return "Engineering"
 
+    # None of the keyword rules matched -- fall back to whatever was
+    # already in the Labor Type column, if it's a recognizable value.
     normalized_original = (
         normalize_original_labor_type(
             original_labor_type
@@ -169,6 +181,8 @@ def infer_estimate_labor_type(
     if "build/program/debug" in section_text:
         return "Engineering"
 
+    # Still nothing -- Other/Unmapped, and flagged for review since
+    # this is an Estimate row (see pipeline_helpers.run_analysis).
     return "Other"
 
 
@@ -232,6 +246,8 @@ def prepare_estimate_dataframe(estimate_df, task_map=None):
 
     estimate_df = estimate_df.copy()
 
+    # Non-numeric hours (blank rows, "-" separators) become 0 rather
+    # than raising, since those rows get filtered out below anyway.
     estimate_df["Required Hrs"] = pd.to_numeric(
         estimate_df["Required Hrs"],
         errors="coerce",
@@ -245,6 +261,9 @@ def prepare_estimate_dataframe(estimate_df, task_map=None):
     )
 
     if section_column is not None:
+        # Forward-fill the section name down through the rows it
+        # applies to, matching how merged Excel cells come through in
+        # an exported CSV.
         estimate_df["Section"] = (
             estimate_df[section_column]
             .where(
@@ -264,6 +283,9 @@ def prepare_estimate_dataframe(estimate_df, task_map=None):
     if "Labor Type" not in estimate_df.columns:
         estimate_df["Labor Type"] = ""
 
+    # Keep only real task rows: a Task name and a positive hour count.
+    # This drops blank spacer rows and the "-" totals rows seen in the
+    # raw exports.
     estimate_rows = estimate_df[
         estimate_df["Task"].notna()
         & estimate_df["Task"]

@@ -4,9 +4,13 @@ import pandas as pd
 # =========================================================
 # Labor helpers
 # =========================================================
+#
+# Cleaning and classifying rows from the Labor CSV (actual hours
+# logged in QuickBooks).
 
 
 def duration_to_hours(duration):
+    # Blank/missing duration counts as zero hours.
     if pd.isna(duration):
         return 0.0
 
@@ -15,7 +19,7 @@ def duration_to_hours(duration):
     if not text:
         return 0.0
 
-    # Handles HH:MM and HH:MM:SS.
+    # Handles HH:MM and HH:MM:SS, the normal QuickBooks export format.
     if ":" in text:
         parts = text.split(":")
 
@@ -36,7 +40,7 @@ def duration_to_hours(duration):
         except (ValueError, IndexError):
             return 0.0
 
-    # Handles a plain numeric number of hours.
+    # Otherwise, treat it as a plain numeric number of hours.
     numeric_value = pd.to_numeric(
         text,
         errors="coerce",
@@ -49,6 +53,8 @@ def duration_to_hours(duration):
 
 
 def clean_service_name(service):
+    # Strips QuickBooks export cruft ("Hourly:" prefix, "(deleted)"
+    # suffix for archived services) down to the plain service name.
     return (
         str(service)
         .replace("Hourly:", "")
@@ -63,7 +69,9 @@ def map_service(service, task_map=None):
     used by this version of the report.
 
     If task_map is provided (from an uploaded master task map CSV),
-    an exact match there takes priority over the built-in rules below.
+    an exact match there takes priority over the built-in rules below
+    -- this is also how a custom category (not one of the 9
+    built-ins) can end up as a Labor Type here.
     """
     text = clean_service_name(service)
     lower = text.lower()
@@ -134,7 +142,8 @@ def map_service(service, task_map=None):
     if lower.startswith("t.s."):
         return "Installation"
 
-    # Legacy QuickBooks service names
+    # Legacy QuickBooks service names, matched exactly rather than by
+    # prefix since these predate the T.X.* naming scheme above.
     legacy_exact = {
         "t.ee-engineering/design": "Engineering",
         "t.ed-cad drafting": "Engineering",
@@ -152,4 +161,6 @@ def map_service(service, task_map=None):
     if lower in legacy_exact:
         return legacy_exact[lower]
 
+    # Nothing matched -- falls into the Other/Unmapped bucket so the
+    # hours are still visible instead of being silently dropped.
     return "Other"

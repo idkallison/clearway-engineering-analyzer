@@ -6,6 +6,12 @@ import pandas as pd
 # =========================================================
 # CSV reading helpers
 # =========================================================
+#
+# Low-level file reading: decoding bytes, finding the real header row
+# (QuickBooks exports have a few metadata rows above the table), and
+# figuring out whether a given CSV is a Labor file or an Estimate
+# file. Nothing here knows about Labor Types -- that classification
+# happens in labor_helpers/estimate_helpers.
 
 # The header sets that identify each file type. Used both by the
 # original single-file flow and by auto-detection when files are
@@ -23,12 +29,16 @@ ESTIMATE_REQUIRED_COLUMNS = {
 
 
 def uploaded_file_bytes(uploaded_file):
+    # Streamlit's UploadedFile is a stream, so rewind before every
+    # read in case something upstream already consumed it.
     uploaded_file.seek(0)
     return uploaded_file.read()
 
 #################
 
 def decode_csv_bytes(file_bytes):
+    # Try encodings in order of likelihood: modern UTF-8 exports
+    # first, then legacy Windows/Excel CSVs.
     for encoding in ("utf-8-sig", "utf-8", "cp1252"):
         try:
             return file_bytes.decode(encoding)
@@ -55,6 +65,8 @@ def find_header_row(raw_df, required_columns, search_limit=30):
 
     rows_to_check = min(search_limit, len(raw_df))
 
+    # Scan each candidate row's values (case/whitespace-insensitive)
+    # for the full set of required column names.
     for row_number in range(rows_to_check):
         values = {
             str(value).strip().lower()
@@ -84,6 +96,8 @@ def read_csv_with_detected_header(
     file_bytes = uploaded_file_bytes(uploaded_file)
     csv_text = decode_csv_bytes(file_bytes)
 
+    # First pass: read everything as raw strings with no header, just
+    # to locate which row the real header lives on.
     raw_df = pd.read_csv(
         BytesIO(csv_text.encode("utf-8")),
         header=None,
@@ -96,6 +110,8 @@ def read_csv_with_detected_header(
         required_columns,
     )
 
+    # Second pass: re-read with normal dtype inference, now that we
+    # know which row to treat as the header.
     dataframe = pd.read_csv(
         BytesIO(csv_text.encode("utf-8")),
         header=header_row,
@@ -128,6 +144,8 @@ def detect_uploaded_file_type(uploaded_file):
     "labor", "estimate", or None if neither format's headers were
     found.
     """
+    # Try Labor headers first, then Estimate headers -- whichever
+    # required-column set is actually found in the file wins.
     try:
         dataframe, header_row = read_csv_with_detected_header(
             uploaded_file,

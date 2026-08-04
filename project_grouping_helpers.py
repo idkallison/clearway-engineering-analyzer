@@ -13,6 +13,9 @@ from pathlib import Path
 # heuristic -- the UI always shows the result in an editable table so
 # the user can fix any mis-grouping by hand.
 
+# Generic words stripped out before comparing filenames, since they
+# show up in every project's files and would otherwise make unrelated
+# projects look similar.
 _NOISE_WORDS = {
     "labor", "labour", "estimate", "estimates", "quote", "quoted",
     "hours", "hrs", "export", "exported", "csv", "utf8", "utf",
@@ -41,6 +44,8 @@ def clean_project_key(filename):
 
     cleaned = " ".join(words).strip()
 
+    # If everything got stripped out (an unusually generic filename),
+    # fall back to the original stem rather than an empty key.
     return cleaned if cleaned else Path(filename).stem.strip()
 
 
@@ -67,12 +72,14 @@ def group_files_into_projects(filenames, fuzzy_threshold=0.85):
         key = clean_project_key(filename)
         exact_groups.setdefault(key, []).append(filename)
 
+    # Groups with 2+ files already found their pair/set exactly.
     settled = {
         key: files
         for key, files in exact_groups.items()
         if len(files) > 1
     }
 
+    # Groups with only 1 file are candidates for the fuzzy pass below.
     leftovers = {
         key: files
         for key, files in exact_groups.items()
@@ -83,6 +90,8 @@ def group_files_into_projects(filenames, fuzzy_threshold=0.85):
         best_key = None
         best_score = 0.0
 
+        # Find the closest already-settled group, if any is close
+        # enough to trust.
         for candidate_key in settled:
             score = difflib.SequenceMatcher(
                 None, key, candidate_key
@@ -95,11 +104,14 @@ def group_files_into_projects(filenames, fuzzy_threshold=0.85):
         if best_key is not None and best_score >= fuzzy_threshold:
             settled[best_key].extend(files)
         else:
+            # No close enough match -- this file stays its own group.
             settled[key] = files
 
     result = {}
     used_names = set()
 
+    # De-duplicate final group labels in case two different keys
+    # happened to clean down to the same display name.
     for key, files in settled.items():
         label = key or "Project"
         final_label = label
